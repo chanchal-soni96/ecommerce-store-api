@@ -1,0 +1,88 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  orders    Order[]
+  createdAt DateTime @default(now())
+
+  @@map("users")
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          Int          @id @default(autoincrement())
+  name        String
+  sku         String       @unique
+  description String?
+  price       Decimal      @db.Decimal(10, 2)
+  categoryId  Int
+  category    Category     @relation(fields: [categoryId], references: [id])
+  inventory   Inventory?
+  orderItems  OrderItem[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([categoryId, price])
+  @@index([createdAt])
+  @@map("products")
+}
+
+model Inventory {
+  id        Int      @id @default(autoincrement())
+  productId Int      @unique
+  quantity  Int      @default(0)
+  product   Product  @relation(fields: [productId], references: [id])
+  updatedAt DateTime @updatedAt
+
+  @@map("inventory")
+}
+
+model Order {
+  id         Int         @id @default(autoincrement())
+  userId     Int
+  status     OrderStatus @default(PENDING)
+  total      Decimal     @db.Decimal(10, 2)
+  user       User        @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+
+  @@index([userId, createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([orderId, productId])
+  @@index([productId])
+  @@map("order_items")
+}
